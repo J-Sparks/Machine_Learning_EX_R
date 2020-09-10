@@ -1,0 +1,191 @@
+
+```{r}
+library(tidyverse)  # data manipulation and visualization
+library(modelr)     # provides easy pipeline modeling functions
+library(broom)      # helps to tidy up model outputs
+```
+
+```{r}
+#data partition 1 example
+#import data from package
+default <- as_tibble(ISLR::Default)
+set.seed(123)
+sample <- sample(c(TRUE, FALSE), nrow(default), replace = T, prob = c(0.6,0.4))
+train <- default[sample, ]
+test <- default[!sample, ]
+```
+
+```{r}
+#data partition 2
+set.seed(123)
+ind <- sample(2, nrow(my_change_mac_time), replace = T, prob = c(0.8,0.2))
+train <- my_change_mac_time[ind==1,]
+test <- my_change_mac_time[ind==2,]
+
+```
+
+```{r}
+#Simple logistic regression
+model1 <- glm(default ~ balance, family = "binomial", data = train)
+```
+
+
+
+
+```{r}
+#Simple logistic regression
+model_glm_mactime <- glm(FOURYEARGRAD ~ MAC2311Sem2+MAC2311Sem3+Deg_GenderCode+Colle_changed+Depart_chnage, data = my_change_mac_time, family = "binomial")
+summary(model_glm_mactime)
+```
+
+```{r}
+#model fit plot
+default %>%
+  mutate(prob = ifelse(default == "Yes", 1, 0)) %>%
+  ggplot(aes(balance, prob)) +
+  geom_point(alpha = .15) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+  ggtitle("Logistic regression model fit") +
+  xlab("Balance") +
+  ylab("Probability of Default")
+```
+
+```{r}
+#summary
+summary(model1)
+#assessin gcoefficients
+tidy(model1)
+exp(coef(model1))
+confint(model1)
+```
+```{r}
+#prediction to see the probability moves between blance~
+predict(model1, data.frame(balance = c(1000, 2000)), type = "response")
+```
+
+```{r}
+#prediction
+
+p1 <- predict(model_glm_mactime, train, type = 'response')
+head(p1)
+```
+```{r}
+#Modeling using another variable
+model2 <- glm(default ~ student, family = "binomial", data = train)
+
+tidy(model2)
+
+predict(model2, data.frame(student = factor(c("Yes", "No"))), type = "response")
+
+#multiple logistic regression
+model3 <- glm(default ~ balance + income + student, family = "binomial", data = train)
+tidy(model3)
+caret::varImp(model3)
+new.df <- tibble(balance = 1500, income = 40, student = c("Yes", "No"))
+predict(model3, new.df, type = "response")
+anova(model1, model3, test = "Chisq")
+list(model1 = pscl::pR2(model1)["McFadden"],
+     model2 = pscl::pR2(model2)["McFadden"],
+     model3 = pscl::pR2(model3)["McFadden"])#lower values is poor fit
+
+#residual assessment to see how many exceed 3 std 
+model1_data <- augment(model1) %>% 
+  mutate(index = 1:n())
+
+ggplot(model1_data, aes(index, .std.resid, color = default)) + 
+  geom_point(alpha = .5) +
+  geom_ref_line(h = 3)
+
+model1_data %>% 
+  filter(abs(.std.resid) > 3)
+
+#Cook's distance values to see highes vlaues
+plot(model1, which = 4, id.n = 5)
+
+
+test %>%
+  mutate(m1.pred = ifelse(test.predicted.m1 > 0.5, "Yes", "No"),
+         m2.pred = ifelse(test.predicted.m2 > 0.5, "Yes", "No"),
+         m3.pred = ifelse(test.predicted.m3 > 0.5, "Yes", "No")) %>%
+  summarise(m1.error = mean(default != m1.pred),
+            m2.error = mean(default != m2.pred),
+            m3.error = mean(default != m3.pred))
+
+table(test$default, test.predicted.m1 > 0.5)
+
+#ROC courve
+library(ROCR)
+
+par(mfrow=c(1, 2))
+
+prediction(test.predicted.m1, test$default) %>%
+  performance(measure = "tpr", x.measure = "fpr") %>%
+  plot()
+
+prediction(test.predicted.m2, test$default) %>%
+  performance(measure = "tpr", x.measure = "fpr") %>%
+  plot()
+
+# model 1 AUC
+prediction(test.predicted.m1, test$default) %>%
+  performance(measure = "auc") %>%
+  .@y.values
+
+# model 2 AUC
+prediction(test.predicted.m2, test$default) %>%
+  performance(measure = "auc") %>%
+  .@y.values
+
+
+```
+
+
+```{r}
+head(train)
+```
+```{r}
+pred1 <- ifelse(p1>0.5, 1,0)
+tab1 <- table(Predicted = pred1, Actrual = train$FOURYEARGRAD)
+tab1
+```
+
+```{r}
+1-sum(diag(tab1))/sum(tab1)
+```
+
+```{r}
+p2 <- predict(model_glm_mactime, test, type = 'response')
+pred2 <-  ifelse(p2 > 0.5, 1,0)
+tab2 <- table(Predicted = pred2, Actual = test$FOURYEARGRAD)
+tab2
+1-sum(diag(tab2))/sum(tab2)
+```
+
+```{r}
+p1 <- predict(model_glm_mactime, my_change_mac_time, type = 'response')
+pred1 <- ifelse(p1>0.5, 1,0)
+tab1 <- table(Predicted = pred1, Actrual = my_change_mac_time$FOURYEARGRAD)
+tab1
+
+```
+
+```{r}
+1-sum(diag(tab1))/sum(tab1)
+
+```
+```{r}
+# Goodness of fit test
+
+with(model_glm_mactime, pchisq(null.deviance - deviance, df.null -df.residual, lower.tail = F))
+```
+```{r}
+# overall effect size
+ll.null <- model_glm_mactime$null.deviance/-2
+ll.proposed <- model_glm_mactime$deviance/-2
+(ll.null - ll.proposed)/ ll.null
+1-pchisq(2*(ll.proposed - ll.null), df=(length(model_glm_mactime$coefficients)-1))
+
+```
+
+
+
