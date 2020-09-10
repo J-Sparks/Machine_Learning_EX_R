@@ -1,0 +1,166 @@
+---
+title: "Igraph"
+author: "Jay Kim"
+date: "October 1, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+m4 <- read.csv(file.choose(), header = T)
+glimpse(m4)
+```
+```{r}
+mydata <- filter(m4, m4$Stu_DepartmentChange == "Yes")
+mydata <- select(mydata, 1:40)
+
+unique(mydata$Stu_CollegeBegin)
+```
+```{r}
+netdata01 <- filter(mydata, mydata$Stu_CollegeBegin == "Science and Engineering")
+nedata<- select(netdata01, 29:30)
+
+summary(nedata)
+
+```
+
+```{r}
+library(igraph)
+netdata <- data.frame(nedata$Stu_DepartmentBegin, nedata$Stu_DepartmentEnd)
+#write.csv(netdata, "netdata.csv")
+Net <- graph.data.frame(netdata, directed=T)
+```
+
+```{r}
+V(Net)
+```
+
+```{r}
+E(Net)
+```
+
+```{r}
+degree(Net)
+```
+
+```{r}
+plot(Net,
+     vertex.color = rainbow(78),
+     vertex.size = 10,
+     vertex.label.dist = 3,
+     edge.arrow.size = 0.1,
+     vertex.label.cex = 0.8
+)
+```
+
+
+
+
+```{r}
+V(Net)$label <- V(Net)$name
+V(Net)$degree <- degree(Net)
+V(Net)$degree
+#SocialE(Net)$degree <- degree(Net)
+```
+```{r}
+V(Net)$label
+```
+```{r}
+#histogram node degree
+hist(V(Net)$degree,
+     col="green",
+     main="Histogram of Node Degree",
+     ylab="Frequency",
+     xlab="Degree of Verticies")  #lower connection and high connection
+
+```
+
+```{r}
+#Network diagram & high light degrees and layouts
+set.seed(222)
+plot(Net,
+     vertex.color = rainbow(78),
+     vertex.size = V(Net)$degree*0.4,
+       edge.arrow.size = 0.1,
+     layout=layout.kamada.kawai
+)
+
+```
+
+```{r}
+#Hun and aithorities
+hs <- hub_score(Net)$vector
+as <- authority.score(Net)$vector
+par(mfrow=c(1,2)) #one row and two column
+set.seed(123)
+plot(Net, 
+     vertex.size=hs*30,
+     main="Hubs",
+     vertex.color=rainbow(78),
+     edge.arrow.size=0.1,
+     layout=layout.kamada.kawai
+     )  #red circle is biology outgoing
+set.seed(123)
+plot(Net, 
+     vertex.size=as*30,
+     main="Authorities",
+     vertex.color=rainbow(78),
+     edge.arrow.size=0.1,
+     layout=layout.kamada.kawai
+     )
+#par(mfrow=c(1,1))
+```
+
+
+```{r}
+#Community detection
+par(mfrow=c(1,1))
+net <- graph.data.frame(netdata, directed = F)#undirected
+cnet <- cluster_edge_betweenness(net)
+plot(cnet,
+     net, 
+     vertex.size=10,
+     vertex.label.cex=0.8,
+     interati)
+#many neworks consist of modules which are densely connected themselves but sparsely connected to other moludes
+
+
+```
+
+```{r}
+BIO_data <- filter(m4, m4$Stu_CollegeBegin == "Science and Engineering" )
+BIO_data_col <- select(BIO_data, 1:3, 13:15,  19:21 ,29:31,"Stu_College1","Stu_College2","Stu_College3","Stu_College4","Stu_Department1","Stu_Department2","Stu_Department3","Stu_Department4")
+```
+```{r}
+deg <- read.csv(file.choose(),header = T)
+```
+
+```{r}
+BIO_data_col_deg <- merge(deg, BIO_data_col, by = "STU_ID", all.y = TRUE)
+write.csv(BIO_data_col_deg, "HMCSE_NET_data.csv")
+# for BS degree only
+library(tidyverse)
+HMCSE_net_data_ba <- filter(BIO_data_col_deg, BIO_data_col_deg$Deg_Desc == "Bachelor")
+```
+
+```{r}
+HMCSE_net_data_ba_major_4yrs <- filter(HMCSE_net_data_ba, HMCSE_net_data_ba$Deg_MajorIndicator ==1 & HMCSE_net_data_ba$FOURYEARGRAD ==1)
+```
+
+```{r}
+mydata_change_01<- read.csv(file.choose(), header = T)
+mydata_
+
+Net_change <- graph.data.frame(mydata_change, directed=T)
+
+```
+
