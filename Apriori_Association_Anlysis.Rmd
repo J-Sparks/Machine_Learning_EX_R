@@ -1,0 +1,394 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+library(arules)
+library(arulesViz)
+#read file name is APR-2018_csv in folder
+ap_2018_apr_crs <- read.csv(file.choose(), header = T, colClasses = "factor")
+View(ap_2018_apr_crs)
+#mydata <- select(ap_2018_apr_crs, -1)
+#2018 FTIC HMCSE 1st semester Courses took more then 20
+
+table(mydata$GPA_FILTER) # 379/ 468  APR_0.8098
+
+```
+```{r}
+379/468  # APR GPA 80.98%
+```
+
+```{r}
+mydata <- mydata
+# rule for the data
+summary(mydata)
+
+```
+
+```{r}
+#NA replace NO for withdrawn all courses
+mydata$GPA_FILTER[which(is.na(mydata$GPA_FILTER))] <- "NO"
+T <- summary(mydata)
+T
+write.table(T, "TableFTIC_APR.csv", sep = ",")
+```
+
+```{r}
+newmy <- as(newmy, "transactions")
+itemFrequencyPlot(newmy, topN=60:80)
+```
+
+
+
+
+```{r}
+# ready to apriori
+
+rules_01 <- apriori(mydata,parameter = list(minlen=1, maxlen=8, conf=.2), appearance = list(rhs=c("GPA_FILTER=YES"), default = "lhs"))
+```
+```{r}
+inspect(head(sort(rules_01, by="lift"),100))
+```
+
+```{r}
+rules_11 <- apriori(mydata,parameter = list(minlen=1, maxlen=8, conf=.2), appearance = list(rhs=c("GPA_FILTER=NO"), default = "lhs"))
+```
+```{r}
+inspect(head(sort(rules_11, by="support"),100)) #89 non APR
+
+
+```
+
+
+
+
+
+```{r}
+plot(rules_11)
+```
+```{r}
+
+subrule01 <- head(sort(rules_11, by= "support"),50)
+plot(subrule01,method="graph")
+```
+
+```{r}
+rules_22 <- apriori(mydata,parameter = list(minlen=1, maxlen=6, suppor =.001), appearance = list(rhs=c("GPA_FILTER=NO"), lhs=c("MAC1147=YES", "ENC1101=YES",    "BSC2010=YES" ,   "BSC2010L=YES",   "CHM2045=YES",    "CHM2045L=YES",   "PSY2012=YES" ,   "BSC2844=YES",    "IDH1040=YES",    "MAC1105C=YES" ,"LIT2000=YES" ,   "COP2253=YES" ,   "EGS1006=YES" ,   "COP2334=YES" ,   "ENC1102=YES" ,   "CHM1020=YES" ,   "MAC2311=YES" ,   "ANT2000=YES"  ,  "STA2023=YES" ,  "MAC2312=YES" ,  "CIS2530=YES" ,   "REL1300=YES",    "SPC2608=YES" ,   "ARH1000=YES" ,   "SYG2000=YES",    "BSC2011=YES" ,   "BSC2011L=YES",   "HSC3535=YES" ,   "AFR1101=YES" ,   "AFR1101L=YES",  "MAC1140=YES" ,   "AMH2020=YES" ,   "EGS4032=YES" ,   "SLS1109=YES" ,   "MUN3990=YES",    "ECO2013=YES" ,   "MUH2930=YES"), default = "none"))
+```
+```{r}
+inspect(head(sort(rules_22, by="lift"),10))
+```
+
+
+
+```{r}
+plot(rules_22, method = "graph")
+```
+
+
+
+
+```{r}
+APRNO_resulte <- inspect(head(sort(rules_22, by="lift"),417))
+#write.csv(APRNO_resulte, "APR_NO_Result.csv")# 54 is non APR 11.54% of FTIC and 60.67% of non APR 89 
+```
+
+```{r}
+plot(rules_22, method = "graph")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+rules_111 <- apriori(mydata,parameter = list(minlen=1, maxlen=8, conf=.001), appearance = list(rhs=c("MAC1147=NO"), lhs=c("GPA_FILTER=YES"),default = "none"))
+```
+
+```{r}
+inspect(rules_111)
+```
+
+
+
+```{r}
+rules_33 <- apriori(mydata,parameter = list(minlen=1, maxlen=10, support=.000001), appearance = list(rhs=c("GPA_FILTER=YES"), lhs=c("MAC1147=YES", "ENC1101=YES",    "BSC2010=YES" ,   "BSC2010L=YES",   "CHM2045=YES",    "CHM2045L=YES",   "PSY2012=YES" ,   "BSC2844=YES",    "IDH1040=YES",    "MAC1105C=YES" ,"LIT2000=YES" ,   "COP2253=YES" ,   "EGS1006=YES" ,   "COP2334=YES" ,   "ENC1102=YES" ,   "CHM1020=YES" ,   "MAC2311=YES" ,   "ANT2000=YES"  ,  "STA2023=YES" ,  "MAC2312=YES" ,  "CIS2530=YES" ,   "REL1300=YES",    "SPC2608=YES" ,   "ARH1000=YES" ,   "SYG2000=YES",    "BSC2011=YES" ,   "BSC2011L=YES",   "HSC3535=YES" ,   "AFR1101=YES" ,   "AFR1101L=YES",  "MAC1140=YES" ,   "AMH2020=YES" ,   "EGS4032=YES" ,   "SLS1109=YES" ,   "MUN3990=YES",    "ECO2013=YES" ,   "MUH2930=YES"), default = "none"))
+
+```
+
+```{r}
+apr_yes <- inspect(head(sort(rules_33, by= "lift"),2000))
+head(apr_yes)
+write.csv(apr_yes, "APR_YESS.Result.csv")
+
+
+```
+```{r}
+plot(rules_33)
+```
+
+```{r}
+plot(rules_33, method = "graph", control = list(type="items"))
+```
+
+```{r}
+plot(rules_33, method = "grouped")
+
+```
+```{r}
+plot(rules_33, method = "paracoord")
+```
+
+
+
+
+```{r}
+# is about eclat algorithm
+mydataT <- as(mydata, "transactions")
+itemFrequencyPlot(mydataT, topN=80:90)
+
+```
+
+```{r}
+rules_03 <- apriori(mydata,parameter = list(minlen=1, maxlen=5, conf=.0001), appearance = list(rhs=c("GPA_FILTER=NO"), lhs=c("MAC1147=YES", "ENC1101=YES",    "BSC2010=YES" ,   "BSC2010L=YES",   "CHM2045=YES",    "CHM2045L=YES",   "PSY2012=YES" ,   "BSC2844=YES",    "IDH1040=YES",    "MAC1105C=YES" ,"LIT2000=YES" ,   "COP2253=YES" ,   "EGS1006=YES" ,   "COP2334=YES" ,   "ENC1102=YES" ,   "CHM1020=YES" ,   "MAC2311=YES" ,   "ANT2000=YES"  ,  "STA2023=YES" ,  "MAC2312=YES" ,  "CIS2530=YES" ,   "REL1300=YES",    "SPC2608=YES" ,   "ARH1000=YES" ,   "SYG2000=YES",    "BSC2011=YES" ,   "BSC2011L=YES",   "HSC3535=YES" ,   "AFR1101=YES" ,   "AFR1101L=YES",  "MAC1140=YES" ,   "AMH2020=YES" ,   "EGS4032=YES" ,   "SLS1109=YES" ,   "MUN3990=YES",    "ECO2013=YES" ,   "MUH2930=YES"), default = "none"))
+
+
+```
+```{r}
+inspect(rules_03)
+```
+```{r}
+glimpse(ap_2018_apr_crs)
+```
+
+```{r}
+m4_re <- read.csv(file.choose(), header = T)
+m4_over <- select(m4_re, 1:3)
+table(m4_over$Cohort)
+```
+
+```{r}
+new_m4 <- m4_over %>% 
+   filter(Cohort < 2015 & FOURYEARGRAD == 0)
+table(new_m4$Cohort, new_m4$FOURYEARGRAD)
+```
+
+```{r}
+deg_m <- read.csv(file.choose(), header = T)
+over_deg_grp <- merge(new_m4, deg_m, by= "STU_ID", all.x=T)
+df_deg <- over_deg_grp %>% 
+  filter(Deg_Desc == "Bachelor")
+head(df_deg)
+```
+```{r}
+summary(df_deg)
+```
+
+```{r}
+table(df_deg$Cohort)
+```
+
+```{r}
+glimpse(df_deg)
+
+```
+```{r}
+colnames(df_deg)
+```
+
+```{r}
+new_df <- df_deg %>% 
+  select(Deg_GenderCode, Deg_Ethnicity, Deg_StateCode, Deg_Major, Deg_DepartmentCode, Deg_Campus )
+summary(new_df)
+```
+
+```{r}
+T_data_deg_over <- as(new_df, "transactions")
+T_data_deg_over
+
+```
+
+```{r}
+summary(T_data_deg_over) # density 0.009
+# 2088 rows * 657 columns = density
+```
+
+```{r}
+
+inspect(T_data_deg_over[1:10])
+```
+```{r}
+itemFrequency(T_data_deg_over[,1]) # 0.542* 2088 rows
+```
+```{r}
+itemFrequency(T_data_deg_over[,1:5])
+
+```
+```{r}
+itemFrequencyPlot(T_data_deg_over, support=0.1)
+```
+
+```{r}
+itemFrequencyPlot(T_data_deg_over, topN=10)
+
+
+```
+
+```{r}
+d1 <- apriori(T_data_deg_over, parameter = list(support=0.01, confidence=0.1,minlen =1))
+d1
+```
+```{r}
+inspect(d1)
+```
+```{r}
+d2 <- apriori(T_data_deg_over, parameter = list(support=0.1, confidence=0.1,minlen =1))
+d2
+```
+```{r}
+inspect(head(sort(d2, by= "lift"),10)) #90rules
+```
+
+```{r}
+plot(d2, method="grouped")
+```
+
+```{r}
+plot(d2, method = "graph", control = list(type="items"))
+```
+
+```{r}
+new_df <- df_deg %>% 
+  select(Deg_GenderCode, Deg_Ethnicity ,Deg_County, Deg_Major, Deg_DepartmentCode, Deg_DiplomaName )
+summary(new_df)
+
+```
+
+```{r}
+d2 <- as(new_df, "transactions")
+d2
+```
+```{r}
+summary(d2)
+
+```
+```{r}
+itemFrequency(d2[,1:5])
+
+```
+
+```{r}
+itemFrequencyPlot(d2, support=0.05)
+```
+
+```{r}
+itemFrequencyPlot(d2, topN=20)
+
+```
+
+```{r}
+inspect(d2[1:10])
+```
+
+```{r}
+m2 <- apriori(d2, parameter = list(support=0.01, confidence=0.05, minlen=1))
+m2
+```
+```{r}
+plot(m2)
+```
+
+```{r}
+plot(m2, method = "graph")
+```
+```{r}
+inspect(m2[1:20])
+```
+
+```{r}
+m3 <- apriori(d2, parameter = list(support=0.01, confidence=0.05, minlen=1), appearance = list(rhs=c("Deg_GenderCode=M"), default="lhs"))
+m3
+```
+```{r}
+plot(m3, method = "graph")
+```
+
+```{r}
+inspect(m3[1:10])
+```
+```{r}
+new_df_21 <- df_deg %>% 
+  select( Deg_Ethnicity ,Deg_County, Deg_DiplomaName )
+summary(new_df_21)
+```
+
+```{r}
+
+
+
+new_df_21 <- as(new_df_21, "transactions")
+new_df_21
+
+
+summary(new_df_21) 
+
+
+inspect(new_df_21[1:10])
+
+itemFrequency(new_df_21[,1]) # 0.542* 2088 rows
+
+itemFrequency(new_df_21[,1:5])
+
+itemFrequencyPlot(new_df_21, support=0.05)
+
+itemFrequencyPlot(new_df_21, topN=5)
+
+
+m4 <- apriori(new_df_21, parameter = list(support=0.01, confidence=0.05, minlen=1))
+              #appearance = list(rhs=c("Deg_GenderCode=M"), default="lhs"))
+m4
+
+
+plot(m4, method = "grouped")
+
+
+```
+```{r}
+inspect(head(sort(m4, by="lift"),10))
+```
+```{r}
+quality(m4) <- round(quality(m4),digits = 3)
+inspect(head(sort(m4, by="lift"),10))
+
+```
+
+```{r}
+#find redundant ruels
+subset.matrix <- is.subset(m4,m4)
+subset.matrix[lower.tri(subset.matrix,diag = T)] <- NA
+redundant <- colSums(subset.matrix, na.rm = T)>=1
+which(redundant)
+```
+```{r}
+#removing redundant rules
+m4.pruned <- m4[!redundant]
+m4.pruned <- sort(m4.pruned, by="lift")
+inspect(m4.pruned)
+```
+
+
