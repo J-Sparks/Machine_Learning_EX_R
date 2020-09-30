@@ -222,4 +222,3 @@ ggplot(data=mds.data, aes(x=X, y=Y, label=Sample)) +
   ggtitle("MDS plot using (1 - Random Forest Proximities)")
 # ggsave(file="random_forest_mds_plot.pdf")
 
-
