@@ -1,0 +1,239 @@
+---
+title: "MAA_2022"
+author: "Jay Kim"
+date: "1/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r datashaping}
+library(readr)
+CSE_ALL_ENR_up2020 <- read_csv("G:/Shared drives/HMCSE-PAM Lab/Jay's Space/DATA/CSE_ALL_ENR_up2020.csv")
+Hmisc::describe(CSE_ALL_ENR_up2020) 
+colnames(CSE_ALL_ENR_up2020)
+colSums(is.na(CSE_ALL_ENR_up2020))
+addmargins(table(CSE_ALL_ENR_up2020$COHORT_YEAR, CSE_ALL_ENR_up2020$APR))
+# high school code
+ 
+applicants_2017to2021_COM_HSGPA2021V1 <- read_csv("G:/Shared drives/HMCSE-PAM Lab/Jay's Space/_DataShaping/applicants_2017to2021_COM_HSGPA2021V1.csv")
+
+FL_HS_CEEB <- applicants_2017to2021_COM_HSGPA2021V1 %>% select("hs_ceeb"=HS_CEEB,"HIGH_SCHOOL_NAME"=HS_NAME) %>% unique()
+write.csv(FL_HS_CEEB, "FL_HS_CEEB.csv", row.names = F)
+
+mydata.one <- merge(CSE_ALL_ENR_up2020, FL_HS_CEEB, by="HIGH_SCHOOL_NAME", all.x = T) 
+ 
+#school grades
+library(readxl)
+SchoolGrades21 <- read_excel("G:/Shared drives/HMCSE-PAM Lab/Jay's Space/2022 Active Projects/01/MAA2022/SchoolGrades21.xlsx", 
+    sheet = "SG")
+colnames(SchoolGrades21)
+SchoolGrades21 <- janitor::clean_names(SchoolGrades21) %>% mutate(high_school = tolower(school_name)) %>% 
+    select(high_school,total_points_earned )
+ 
+SchoolGrades21_CEEB<- read_excel("G:/Shared drives/HMCSE-PAM Lab/Jay's Space/2022 Active Projects/01/MAA2022/SchoolGrades21.xlsx", 
+    sheet = "CEEB") 
+SchoolGrades21_CEEB <- janitor::clean_names(SchoolGrades21_CEEB) %>% 
+    mutate(high_school= tolower(high_school))
+
+ 
+HS_CEEB_POINT <- merge(SchoolGrades21, SchoolGrades21_CEEB, by="high_school", all.y = T)  #1715
+ 
+FL_HS_CEEB_re <- merge(FL_HS_CEEB, HS_CEEB_POINT, by="hs_ceeb" )
+ 
+CSE_ALL <- merge(CSE_ALL_ENR_up2020, FL_HS_CEEB_re, by="HIGH_SCHOOL_NAME", all.x = T) 
+
+CSE_ALL_MAA2022 <- CSE_ALL %>% 
+    select(1,19:81)
+ 
+CRSCSEData <- read_csv("G:/Shared drives/HMCSE-PAM Lab/DATA 202001/CRSCSEData.csv") %>% 
+      mutate(Summer = substr(DEMO_TIME_FRAME, 5,6)) %>% filter(Summer == "05" & DEMO_TIME_FRAME >= 201508) %>% 
+    group_by(UNIV_ROW_ID) %>% filter(DEMO_TIME_FRAME == max(DEMO_TIME_FRAME)) %>% 
+    filter(!duplicated(UNIV_ROW_ID)) %>% select(1, Summer)
+
+```
+
+## Data Description
+
+```{r}
+CSE_ALL_MAA2022_df <- merge(CSE_ALL_MAA2022, CRSCSEData, by="UNIV_ROW_ID", all.x = T) %>% 
+    mutate(is.Summer = ifelse(is.na(Summer), "No", "Yes")) %>% filter(AveGPA2.77 =="No") %>% 
+    filter(!is.na(APR))
+ 
+addmargins(table(CSE_ALL_MAA2022_df$APR, ACOH=CSE_ALL_MAA2022_df$COHORT_YEAR))
+hist(CSE_ALL_MAA2022_df$GPA_ENTERING_SECOND_FALL)
+write.csv(CSE_ALL_MAA2022_df, "CSE_ALL_MAA2022_DF_V0.csv", row.names = F)
+GPAY1_MAA2022_DF_V0 <- read_csv("G:/Shared drives/HMCSE-PAM Lab/Jay's Space/2022 Active Projects/01/MAA2022/CSE_ALL_MAA2022_DF_V0.csv") %>% 
+    select(7:63,66)
+colnames(GPAY1_MAA2022_DF_V0)
+GPAY1_MAA2022_DF_V1 <-  GPAY1_MAA2022_DF_V0 %>% select(1,3,10,11,12,13,15,21,22,28,29,31:40,43,46,48,50,51,57,58,53)
+colnames(GPAY1_MAA2022_DF_V1)
+GPAY1_MAA2022_DF_V2 <- GPAY1_MAA2022_DF_V1 %>% mutate(ACT_SAT = pmax(ACT_PROPORTION, SAT_PROPORTION)) %>%
+    relocate(ACT_SAT, .after = GPA_HIGHSCHOOL) %>% 
+    select(-ACT_PROPORTION, -SAT_PROPORTION, -APR, -PSE) %>% 
+    mutate(is.Engineering = ifelse(str_detect( ENTRY_PROGRAM, "...Engineering"), "Y","N")) %>% 
+     mutate(is.Engineering = ifelse(str_detect( ENTRY_PROGRAM, "Engineering..."), "Y",is.Engineering)) %>% 
+    relocate(is.Engineering, .after =ENTRY_PROGRAM ) 
+glimpse(GPAY1_MAA2022_DF_V2)
+write.csv(GPAY1_MAA2022_DF_V2, "GPAY1_MAA2022_DF_V2.csv", row.names = F)
+Hmisc::describe(GPAY1_MAA2022_DF_V2)
+
+
+```
+
+## Methods
+
+-Focus on regression models to predict continuous dependent variables.
+1. Multiple linear regression
+2. Regularized regression models using RStudio
+    
+**Linear Regression **
+
+-Evaluate performance of the model considering R-squared values and Root Mean Squared Error (RMSE)
+    Higher R-squared score and lower RMSE values indicate better model.
+    
+**Ridge Regression**
+
+Extension of linear regression where the loss function is modified to minimize the complexity of the model. 
+This modification is done by adding a penalty parameter that is equivalent to the square of the magnitude of the coefficients.
+
+
+```{r pacages}
+library(plyr)
+library(readr)
+library(dplyr)
+library(caret)
+library(ggplot2)
+library(repr)
+library(corrgram)
+library(corrplot)
+library(mlbench)
+library(psych)
+library(readr)
+GPAY1_MAA2022_DF_V2 <- read_csv("G:/Shared drives/HMCSE-PAM Lab/Jay's Space/2022 Active Projects/01/MAA2022/GPAY1_MAA2022_DF_V2.csv") %>% 
+    select(-2,-FIRST_FALL_NON_NEED_BASED_LOANS_AMOUNT) %>% filter(!is.na(GPA_ENTERING_SECOND_FALL)) %>% 
+    filter(!is.na(GPA_HIGHSCHOOL))
+glimpse(GPAY1_MAA2022_DF_V2)
+```
+
+### Data Partitioning/Scaling
+
+```{r}
+num.cols <- GPAY1_MAA2022_DF_V2 %>% select(where(is.numeric)) %>% select(-GPA_ENTERING_SECOND_FALL ) # collinearity
+colSums(is.na(num.cols))
+num.col.names <- colnames(num.cols)
+prep_num.cols <- preProcess(num.cols, method = c("center", "scale"))
+GPAY1_MAA2022_DF_V2[,num.col.names] <- predict(prep_num.cols, GPAY1_MAA2022_DF_V2[,num.col.names])
+summary(GPAY1_MAA2022_DF_V2)
+
+num.cols.cor <- num.cols %>% na.omit()
+colSums(is.na(num.cols.cor))
+num.cols.corr <- cor(num.cols.cor)
+#num.cols.corr
+#corrplot(num.cols.corr, method = "pie" ) # too small
+psych::pairs.panels(num.cols.corr, cex.cor=2, main="Histograms and Correlations for a Data Matrix")
+
+
+```
+### Data Partition
+
+```{r}
+colSums(is.na(GPAY1_MAA2022_DF_V2)) 
+set.seed(123)
+id <- sample(2, nrow(GPAY1_MAA2022_DF_V2), replace = T, prob = c(0.7,0.3))
+train_t <- GPAY1_MAA2022_DF_V2[id ==1, ]
+test_t <- GPAY1_MAA2022_DF_V2[id ==2, ]
+
+# Custom control parameters
+custom1 <- trainControl(method = "repeatedcv",number = 10, repeats = 3, verboseIter = T)
+
+
+```
+
+
+
+
+
+### Regression
+
+```{r}
+lm.1 <- train(GPA_ENTERING_SECOND_FALL ~ ., data = train_t, method ="lm", trControl = custom1)
+lm.1$results #RMSE 0.5282094 /0.7067871
+lm.1
+summary(lm.1)
+summary(m1 <- lm( GPA_ENTERING_SECOND_FALL~., data= GPAY1_MAA2022_DF_V2))
+summary(m2 <- step(m1, direction = "backward"))
+sqrt(mean(m2$residuals^2))  #RMSE0.5191501 0.7238,
+
+#Ridge
+ridge.1 <- train(GPA_ENTERING_SECOND_FALL ~ ., data = train_t, method ="glmnet", 
+                 tuneGrid = expand.grid(alpha = 0, lambda = seq(0.0001, 0.5,length = 5)), # increase lambda increase fananltyhrink 
+                 trControl = custom1) # best  lambda = 1e-04 0.0004
+
+ridge.1
+# Lasso
+set.seed(213)
+lasso.1 <- train(GPA_ENTERING_SECOND_FALL ~ ., data = train_t, method ="glmnet", 
+                 tuneGrid = expand.grid(alpha = 1, lambda = seq(0.0001, 0.5,length = 5)), # increase lambda increase fananltyhrink 
+                 trControl = custom1)
+
+#Elastic Net
+elasticnet.1 <- train(GPA_ENTERING_SECOND_FALL ~ ., data = train_t, method ="glmnet", 
+                 tuneGrid = expand.grid(alpha = seq(0, 1, length = 5), lambda = seq(0.0001, 0.5,length = 10)),  trControl = custom1)
+#alpha = 0.111, lambda = 1e-04 
+```
+
+### Plots
+
+```{r}
+plot(lm.1$finalModel)
+plot(ridge.1) #higher lambda increase errors
+plot(ridge.1$finalModel, xvar= "lambda") #relax lambda coefficient smaller
+plot(ridge.1$finalModel, xvar ="dev", label = F)
+plot(varImp(ridge.1, scale = F))
+plot(lasso.1)
+plot(lasso.1$finalModel, xvar= "lambda") #relax lambda coefficient smaller
+plot(lasso.1$finalModel, xvar ="dev", label = F) # show overfitting at the end
+plot(varImp(lasso.1, scale = F))
+plot(elasticnet.1)
+plot(elasticnet.1$finalModel, xvar= "lambda") #relax lambda coefficient smaller
+plot(elasticnet.1$finalModel, xvar ="dev", label = F) # show overfitting at the end
+plot(varImp(elasticnet.1, scale = F))
+
+
+```
+
+
+
+
+
+```{r}
+car::vif(m1)
+#comparison
+all_models <- list(LinerModel = lm.1, RidgeModel = ridge.1, LassoModel = lasso.1, ElasticNetModel =elasticnet.1)
+res <- resamples(all_models)
+summary(res)
+bwplot(res)
+xyplot(res, metric = "RMSE")
+
+#best model
+elasticnet.1$bestTune
+lasso.1$bestTune
+best.M <- elasticnet.1$finalModel
+coef(best.M, s = elasticnet.1$bestTune$lambda)
+saveRDS(elasticnet.1,"FinalModel.rds")
+final.model <- readRDS("FinalModel.rds")
+
+#prediction
+Pred.train <- predict(final.model, train_t)
+sqrt(mean((train_t$GPA_ENTERING_SECOND_FALL - Pred.train)^2)) # 0.521998
+Pred.test <- predict(final.model, test_t)
+sqrt(mean((test_t$GPA_ENTERING_SECOND_FALL - Pred.test)^2)) # 0.5378403
+
+```
+
+
+
+ 
